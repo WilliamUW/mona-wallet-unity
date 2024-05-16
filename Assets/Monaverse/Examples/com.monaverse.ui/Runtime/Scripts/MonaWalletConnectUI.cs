@@ -1,20 +1,19 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Linq;
+using Monaverse.Api;
+using Monaverse.Core;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.UI;
 using WalletConnectSharp.Sign.Models;
 using WalletConnectSharp.Sign.Models.Engine;
 using WalletConnectUnity.Core;
 using WalletConnectUnity.Modal;
-using Monaverse.Api;
-using Monaverse.Core;
-using WalletConnectUnity.Core.Evm;
-using UnityEngine.EventSystems;
 
 namespace Monaverse.UI
 {
+    // monaverse modal
     public class MonaWalletConnectUI : MonoBehaviour
     {
         [SerializeField] private Button _walletConnectButton;
@@ -102,8 +101,6 @@ namespace Monaverse.UI
             {
                 if (string.IsNullOrEmpty(@struct.Topic))
                     return;
-                
-                _walletConnectButton.interactable = false;
 
                 Debug.Log($"Session connected. Topic: {@struct.Topic}");
                 StatusWindow.Instance.Show("Wallet connected.");
@@ -116,8 +113,6 @@ namespace Monaverse.UI
                 if (string.IsNullOrEmpty(@struct.Topic))
                     return;
 
-                _walletConnectButton.interactable = false;
-
                 Debug.Log($"Session connected. Topic: {@struct.Topic}");
                 StatusWindow.Instance.Show("Wallet connected.");
 
@@ -128,8 +123,6 @@ namespace Monaverse.UI
             {
                 Debug.Log("Wallet disconnected.");
                 StatusWindow.Instance.Show("Wallet disconnected.");
-
-                _walletConnectButton.interactable = true;
             };
         }
 
@@ -137,6 +130,13 @@ namespace Monaverse.UI
 
         private IEnumerator OpenWalletConnect()
         {
+            if (_walletConnected)
+            {
+                _ = MonaverseManager.Instance.SDK.Disconnect();
+                _walletConnected = false;
+                yield break;
+            }
+
             if (!WalletConnectModal.IsReady)
             {
                 Instantiate(_walletConnectModalPrefab, Vector3.zero, Quaternion.identity);
@@ -207,72 +207,80 @@ namespace Monaverse.UI
 
             _walletAuthorizing = true;
 
-            //var session = WalletConnect.Instance.ActiveSession;
-            //var address = WalletConnect.Instance.ActiveSession.CurrentAddress(session.Namespaces.Keys.FirstOrDefault())
-            //    .Address;
-
-            var address = await MonaverseManager.Instance.SDK.ActiveWallet.GetAddress();
-
-            var validateWalletAddressResponse = await MonaApi.ApiClient.Auth.ValidateWallet(address);
-            Debug.Log("ValidateWallet Done!\nResponse: " + validateWalletAddressResponse);
-            StatusWindow.Instance.Show("ValidateWallet Done!");
-
-            if (!validateWalletAddressResponse.IsSuccess)
+            try
             {
-                NotificationManager.Instance.ShowNotification("ERROR",
-                    validateWalletAddressResponse.Message,
-                    NotificationManager.Severity.Error);
-                _walletAuthorizing = false;
-                return;
-            }
 
-            if (!validateWalletAddressResponse.Data.IsValid)
-            {
-                if(validateWalletAddressResponse.Data.ErrorMessage == null)
-                    UnauthorizedPopup.Instance.Show();
-                else
+                if (!await MonaverseManager.Instance.SDK.IsWalletConnected())
+                {
+                    await MonaverseManager.Instance.SDK.ConnectWallet();
+                    _walletConnected = await MonaverseManager.Instance.SDK.IsWalletConnected();
+                }
+
+                var address = await MonaverseManager.Instance.SDK.ActiveWallet.GetAddress();
+
+                var validateWalletAddressResponse = await MonaApi.ApiClient.Auth.ValidateWallet(address);
+                Debug.Log("ValidateWallet Done!\nResponse: " + validateWalletAddressResponse);
+                StatusWindow.Instance.Show("ValidateWallet Done!");
+
+                if (!validateWalletAddressResponse.IsSuccess)
+                {
                     NotificationManager.Instance.ShowNotification("ERROR",
-                        validateWalletAddressResponse.Data.ErrorMessage,
+                        validateWalletAddressResponse.Message,
                         NotificationManager.Severity.Error);
+                    _walletAuthorizing = false;
+                    return;
+                }
+
+                if (!validateWalletAddressResponse.Data.IsValid)
+                {
+                    if (validateWalletAddressResponse.Data.ErrorMessage == null)
+                        UnauthorizedPopup.Instance.Show();
+                    else
+                        NotificationManager.Instance.ShowNotification("ERROR",
+                            validateWalletAddressResponse.Data.ErrorMessage,
+                            NotificationManager.Severity.Error);
+                    _walletAuthorizing = false;
+                    return;
+                }
+
+                var signature = await MonaverseManager.Instance.SDK.ActiveWallet.SignMessage(validateWalletAddressResponse.Data.SiweMessage);
+
+                Debug.Log("Wallet Connect Signature: " + signature);
+                StatusWindow.Instance.Show("Authorizing with Mona...");
+
+                var authorizeResponse = await MonaApi.ApiClient.Auth.Authorize(signature, validateWalletAddressResponse.Data.SiweMessage);
+                Debug.Log("Authorize Done!\nResponse: " + authorizeResponse);
+                StatusWindow.Instance.Show("Authorize Done!");
+
+                if (!authorizeResponse.IsSuccess)
+                {
+                    NotificationManager.Instance.ShowNotification("ERROR",
+                        "Authorization Failed",
+                        NotificationManager.Severity.Error);
+                    _walletAuthorizing = false;
+                    return;
+                }
+
+                StatusWindow.Instance.Show("Authorization Successful!");
+
+                var getCollectiblesResult = await MonaApi.ApiClient.Collectibles.GetWalletCollectibles();
+                Debug.Log("Collectibles: " + getCollectiblesResult);
+                if (!getCollectiblesResult.IsSuccess)
+                {
+                    NotificationManager.Instance.ShowNotification("ERROR",
+                        "GetCollectibles Failed: " + getCollectiblesResult.Message,
+                        NotificationManager.Severity.Error);
+                    _walletAuthorizing = false;
+                    return;
+                }
+
+                StatusWindow.Instance.Show("Pulled Collectibles. Total Count: " + getCollectiblesResult.Data.TotalCount);
                 _walletAuthorizing = false;
-                return;
-            }
 
-            //var data = new PersonalSign(validateWalletAddressResponse.Data.SiweMessage, address);
-            //var signature = await WalletConnect.Instance.RequestAsync<PersonalSign, string>(data);
-            var signature = await MonaverseManager.Instance.SDK.ActiveWallet.SignMessage(validateWalletAddressResponse.Data.SiweMessage);
-
-            Debug.Log("Wallet Connect Signature: " + signature);
-            StatusWindow.Instance.Show("Authorizing with Mona...");
-
-            var authorizeResponse = await MonaApi.ApiClient.Auth.Authorize(signature, validateWalletAddressResponse.Data.SiweMessage);
-            Debug.Log("Authorize Done!\nResponse: " + authorizeResponse);
-            StatusWindow.Instance.Show("Authorize Done!");
-
-            if (!authorizeResponse.IsSuccess)
+            } catch(Exception ex)
             {
-                NotificationManager.Instance.ShowNotification("ERROR",
-                    "Authorization Failed",
-                    NotificationManager.Severity.Error);
-                _walletAuthorizing = false;
-                return;
+                Debug.LogError(ex);
             }
-
-            StatusWindow.Instance.Show("Authorization Successful!");
-
-            var getCollectiblesResult = await MonaApi.ApiClient.Collectibles.GetWalletCollectibles();
-            Debug.Log("Collectibles: " + getCollectiblesResult);
-            if (!getCollectiblesResult.IsSuccess)
-            {
-                NotificationManager.Instance.ShowNotification("ERROR",
-                    "GetCollectibles Failed: " + getCollectiblesResult.Message,
-                    NotificationManager.Severity.Error);
-                _walletAuthorizing = false;
-                return;
-            }
-
-            StatusWindow.Instance.Show("Pulled Collectibles. Total Count: " + getCollectiblesResult.Data.TotalCount);
-            _walletAuthorizing = false;
         }
     }
 }

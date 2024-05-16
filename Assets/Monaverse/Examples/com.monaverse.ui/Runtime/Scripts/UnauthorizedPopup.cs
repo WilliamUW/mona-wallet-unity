@@ -1,6 +1,4 @@
 using UnityEngine;
-using TMPro;
-using UnityEngine.UI;
 
 public class UnauthorizedPopup : MonoBehaviour
 {
@@ -38,7 +36,7 @@ public class UnauthorizedPopup : MonoBehaviour
 
     public void OnRegisterButtonClicked()
     {
-        Application.OpenURL("https://monaverse.com");
+        Application.OpenURL("https://staging.monaverse.com/");
         Hide();
     }
 
