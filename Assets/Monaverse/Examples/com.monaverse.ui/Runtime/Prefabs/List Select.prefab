@@ -10,7 +10,7 @@ GameObject:
   m_Component:
   - component: {fileID: 387745092}
   - component: {fileID: 387745094}
-  m_Layer: 5
+  m_Layer: 0
   m_Name: Padding
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -57,7 +57,7 @@ GameObject:
   m_Component:
   - component: {fileID: 802388953}
   - component: {fileID: 802388956}
-  m_Layer: 5
+  m_Layer: 0
   m_Name: Left Item
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -104,7 +104,7 @@ GameObject:
   - component: {fileID: 916865370}
   - component: {fileID: 916865372}
   - component: {fileID: 916865371}
-  m_Layer: 5
+  m_Layer: 0
   m_Name: Chevron
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -179,7 +179,7 @@ GameObject:
   - component: {fileID: 1444686885}
   - component: {fileID: 1444686887}
   - component: {fileID: 1444686886}
-  m_Layer: 5
+  m_Layer: 0
   m_Name: Text (TMP)
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -313,7 +313,7 @@ GameObject:
   - component: {fileID: 1477791188}
   - component: {fileID: 1477791190}
   - component: {fileID: 1477791189}
-  m_Layer: 5
+  m_Layer: 0
   m_Name: Image
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -388,7 +388,7 @@ GameObject:
   - component: {fileID: 1555919765}
   - component: {fileID: 1555919767}
   - component: {fileID: 1555919766}
-  m_Layer: 5
+  m_Layer: 0
   m_Name: Icon Border
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -462,7 +462,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1578448022}
   - component: {fileID: 1578448023}
-  m_Layer: 5
+  m_Layer: 0
   m_Name: Right Item
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -510,7 +510,7 @@ GameObject:
   - component: {fileID: 436729361767102476}
   - component: {fileID: 5276603985251174054}
   - component: {fileID: 6417960236032094792}
-  m_Layer: 5
+  m_Layer: 0
   m_Name: Text (TMP)
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -659,7 +659,7 @@ GameObject:
   - component: {fileID: 483489617172714661}
   - component: {fileID: 5018572985581102292}
   - component: {fileID: 1868399803264131443}
-  m_Layer: 5
+  m_Layer: 0
   m_Name: Installed Icon
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -735,7 +735,7 @@ GameObject:
   - component: {fileID: 5630562111295855499}
   - component: {fileID: 8657927277201503980}
   - component: {fileID: 8647532622325429714}
-  m_Layer: 5
+  m_Layer: 0
   m_Name: Image
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -810,7 +810,7 @@ GameObject:
   - component: {fileID: 1677801289371050531}
   - component: {fileID: 3597952376940562058}
   - component: {fileID: 1202885570164710466}
-  m_Layer: 5
+  m_Layer: 0
   m_Name: Installed Icon Checkmark
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -886,7 +886,7 @@ GameObject:
   - component: {fileID: 9111608780098562646}
   - component: {fileID: 1436094928649934336}
   - component: {fileID: 2034050112114120398}
-  m_Layer: 5
+  m_Layer: 0
   m_Name: Mask
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -976,7 +976,7 @@ GameObject:
   - component: {fileID: 3720940725979284944}
   - component: {fileID: 4541763857293792454}
   - component: {fileID: 2288076823737638546}
-  m_Layer: 5
+  m_Layer: 0
   m_Name: Installed Icon Circle
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -1063,7 +1063,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 591126230796723597, guid: f654de3b65372460488d3fe6ba07aea3, type: 3}
       propertyPath: m_Layer
-      value: 5
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 591126230796723598, guid: f654de3b65372460488d3fe6ba07aea3, type: 3}
       propertyPath: m_RootOrder
@@ -1091,7 +1091,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 591126230860658990, guid: f654de3b65372460488d3fe6ba07aea3, type: 3}
       propertyPath: m_Layer
-      value: 5
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 591126230860658991, guid: f654de3b65372460488d3fe6ba07aea3, type: 3}
       propertyPath: m_AnchorMax.x
@@ -1107,7 +1107,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 591126231143172803, guid: f654de3b65372460488d3fe6ba07aea3, type: 3}
       propertyPath: m_Layer
-      value: 5
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 591126231143172803, guid: f654de3b65372460488d3fe6ba07aea3, type: 3}
       propertyPath: m_IsActive
@@ -1131,7 +1131,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 591126231237809163, guid: f654de3b65372460488d3fe6ba07aea3, type: 3}
       propertyPath: m_Layer
-      value: 5
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 591126231237809164, guid: f654de3b65372460488d3fe6ba07aea3, type: 3}
       propertyPath: m_RootOrder
@@ -1147,7 +1147,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 591126231387547366, guid: f654de3b65372460488d3fe6ba07aea3, type: 3}
       propertyPath: m_Layer
-      value: 5
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 591126231387547367, guid: f654de3b65372460488d3fe6ba07aea3, type: 3}
       propertyPath: m_Pivot.x

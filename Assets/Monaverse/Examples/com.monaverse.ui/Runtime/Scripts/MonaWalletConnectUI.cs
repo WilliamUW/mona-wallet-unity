@@ -23,6 +23,7 @@ namespace Monaverse.UI
 
         private bool _walletConnected;
         private bool _walletAuthorized;
+        private bool _walletAuthorizing;
         private bool _modalInitialized;
 
         public static MonaWalletConnectUI Instance { get; private set; }
@@ -107,8 +108,20 @@ namespace Monaverse.UI
                 Debug.Log($"Session connected. Topic: {@struct.Topic}");
                 StatusWindow.Instance.Show("Wallet connected.");
 
-                if(!_walletAuthorized)
-                    AuthorizeWallet();
+                AuthorizeWallet();
+            };
+
+            WalletConnect.Instance.SessionConnected += (_, @struct) =>
+            {
+                if (string.IsNullOrEmpty(@struct.Topic))
+                    return;
+
+                _walletConnectButton.interactable = false;
+
+                Debug.Log($"Session connected. Topic: {@struct.Topic}");
+                StatusWindow.Instance.Show("Wallet connected.");
+
+                AuthorizeWallet();
             };
 
             WalletConnect.Instance.SessionDisconnected += (_, _) =>
@@ -189,9 +202,16 @@ namespace Monaverse.UI
 
         public async void AuthorizeWallet()
         {
-            var session = WalletConnect.Instance.ActiveSession;
-            var address = WalletConnect.Instance.ActiveSession.CurrentAddress(session.Namespaces.Keys.FirstOrDefault())
-                .Address;
+            if (_walletAuthorized || _walletAuthorizing)
+                return;
+
+            _walletAuthorizing = true;
+
+            //var session = WalletConnect.Instance.ActiveSession;
+            //var address = WalletConnect.Instance.ActiveSession.CurrentAddress(session.Namespaces.Keys.FirstOrDefault())
+            //    .Address;
+
+            var address = await MonaverseManager.Instance.SDK.ActiveWallet.GetAddress();
 
             var validateWalletAddressResponse = await MonaApi.ApiClient.Auth.ValidateWallet(address);
             Debug.Log("ValidateWallet Done!\nResponse: " + validateWalletAddressResponse);
@@ -202,6 +222,7 @@ namespace Monaverse.UI
                 NotificationManager.Instance.ShowNotification("ERROR",
                     validateWalletAddressResponse.Message,
                     NotificationManager.Severity.Error);
+                _walletAuthorizing = false;
                 return;
             }
 
@@ -213,11 +234,13 @@ namespace Monaverse.UI
                     NotificationManager.Instance.ShowNotification("ERROR",
                         validateWalletAddressResponse.Data.ErrorMessage,
                         NotificationManager.Severity.Error);
+                _walletAuthorizing = false;
                 return;
             }
 
-            var data = new PersonalSign(validateWalletAddressResponse.Data.SiweMessage, address);
-            var signature = await WalletConnect.Instance.RequestAsync<PersonalSign, string>(data);
+            //var data = new PersonalSign(validateWalletAddressResponse.Data.SiweMessage, address);
+            //var signature = await WalletConnect.Instance.RequestAsync<PersonalSign, string>(data);
+            var signature = await MonaverseManager.Instance.SDK.ActiveWallet.SignMessage(validateWalletAddressResponse.Data.SiweMessage);
 
             Debug.Log("Wallet Connect Signature: " + signature);
             StatusWindow.Instance.Show("Authorizing with Mona...");
@@ -231,6 +254,7 @@ namespace Monaverse.UI
                 NotificationManager.Instance.ShowNotification("ERROR",
                     "Authorization Failed",
                     NotificationManager.Severity.Error);
+                _walletAuthorizing = false;
                 return;
             }
 
@@ -243,10 +267,12 @@ namespace Monaverse.UI
                 NotificationManager.Instance.ShowNotification("ERROR",
                     "GetCollectibles Failed: " + getCollectiblesResult.Message,
                     NotificationManager.Severity.Error);
+                _walletAuthorizing = false;
                 return;
             }
 
             StatusWindow.Instance.Show("Pulled Collectibles. Total Count: " + getCollectiblesResult.Data.TotalCount);
+            _walletAuthorizing = false;
         }
     }
 }
