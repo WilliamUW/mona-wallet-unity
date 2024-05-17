@@ -12,8 +12,6 @@ public class StatusWindow : MonoBehaviour
     {
         if(Instance == null)
             Instance = this;
-
-        DontDestroyOnLoad(this);
     }
     
     public void Show(string message)
