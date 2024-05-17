@@ -10,7 +10,7 @@ GameObject:
   m_Component:
   - component: {fileID: 3915268681845666488}
   m_Layer: 0
-  m_Name: MonaWalletUI
+  m_Name: MonaverseModal
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -43,6 +43,10 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 3915268681845666488}
     m_Modifications:
+    - target: {fileID: 99800181593499010, guid: b2387e9a48a3a462b9aa3ceba172ebc7, type: 3}
+      propertyPath: _providerSelectionCanvas
+      value: 
+      objectReference: {fileID: 5953116780277548834}
     - target: {fileID: 420527585860883839, guid: b2387e9a48a3a462b9aa3ceba172ebc7, type: 3}
       propertyPath: m_AnchorMax.y
       value: 0
@@ -231,6 +235,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: ProviderSelection
       objectReference: {fileID: 0}
+    - target: {fileID: 5765810506744141691, guid: b2387e9a48a3a462b9aa3ceba172ebc7, type: 3}
+      propertyPath: m_Enabled
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 5998693656904417397, guid: b2387e9a48a3a462b9aa3ceba172ebc7, type: 3}
       propertyPath: m_AnchorMax.y
       value: 0
@@ -335,6 +343,11 @@ PrefabInstance:
 --- !u!224 &4767443360453732365 stripped
 RectTransform:
   m_CorrespondingSourceObject: {fileID: 4661404057213925460, guid: b2387e9a48a3a462b9aa3ceba172ebc7, type: 3}
+  m_PrefabInstance: {fileID: 187460345020764249}
+  m_PrefabAsset: {fileID: 0}
+--- !u!223 &5953116780277548834 stripped
+Canvas:
+  m_CorrespondingSourceObject: {fileID: 5765810506744141691, guid: b2387e9a48a3a462b9aa3ceba172ebc7, type: 3}
   m_PrefabInstance: {fileID: 187460345020764249}
   m_PrefabAsset: {fileID: 0}
 --- !u!1001 &1710930258461746874

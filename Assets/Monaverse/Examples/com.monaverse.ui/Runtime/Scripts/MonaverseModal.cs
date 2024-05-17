@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Numerics;
 using Monaverse.Api;
 using Monaverse.Core;
 using UnityEngine;
@@ -10,24 +11,28 @@ using WalletConnectSharp.Sign.Models;
 using WalletConnectSharp.Sign.Models.Engine;
 using WalletConnectUnity.Core;
 using WalletConnectUnity.Modal;
+using ZXing;
+using ZXing.QrCode;
 
 namespace Monaverse.UI
 {
-    // monaverse modal
-    public class MonaWalletConnectUI : MonoBehaviour
+    public class MonaverseModal : MonoBehaviour
     {
-        [SerializeField] private Button _walletConnectButton;
-        [Space] [SerializeField] private GameObject _walletConnectModalPrefab;
-        [Space] [SerializeField] private GameObject _monaManagerPrefab;
+        [SerializeField] private Canvas _providerSelectionCanvas;
+        [SerializeField] private GameObject _walletDisconnectView;
+        [SerializeField] private GameObject _walletConnectModalPrefab;
+        [SerializeField] private GameObject _monaManagerPrefab;
 
         private bool _walletConnected;
         private bool _walletAuthorized;
         private bool _walletAuthorizing;
         private bool _modalInitialized;
 
-        public static MonaWalletConnectUI Instance { get; private set; }
+        public static MonaverseModal Instance { get; private set; }
 
         private float _initWCTimeout = 30.0f;
+
+        private string[] SupportedMethods = new[] { "eth_sendTransaction", "personal_sign", "eth_signTypedData" };
 
         private void Awake()
         {
@@ -45,6 +50,8 @@ namespace Monaverse.UI
 
         private void Start()
         {
+            DontDestroyOnLoad(this.gameObject);
+
             if (FindObjectOfType<EventSystem>() == null)
             {
                 GameObject eventSystemObject = new GameObject("EventSystem");
@@ -55,11 +62,49 @@ namespace Monaverse.UI
             StartCoroutine(InitMonaverseManager(MonaverseManagerInitialized));
         }
 
+        public static bool OpenModal()
+        {
+            if(Instance == null)
+            {
+                Debug.LogError("Mona Wallet Modal is missing from the scene.");
+                return false;
+            }
+
+            if(Instance._providerSelectionCanvas == null)
+            {
+                Debug.LogError("Wallet provider selection canvas is null.");
+                return false;
+            }
+
+            Instance._providerSelectionCanvas.enabled = true;
+
+            return true;
+        }
+
+        public static bool CloseModal()
+        {
+            if (Instance == null)
+            {
+                Debug.LogError("Mona Wallet Modal is missing from the scene.");
+                return false;
+            }
+
+            if (Instance._providerSelectionCanvas == null)
+            {
+                Debug.LogError("Wallet provider selection canvas is null.");
+                return false;
+            }
+
+            Instance._providerSelectionCanvas.enabled = false;
+
+            return true;
+        }
+
         private IEnumerator InitMonaverseManager(Action callback)
         {
             if (MonaverseManager.Instance == null)
             {
-                Instantiate(_monaManagerPrefab, Vector3.zero, Quaternion.identity);
+                Instantiate(_monaManagerPrefab);
                 while (MonaverseManager.Instance == null)
                     yield return new WaitForSeconds(0.5f);
             }
@@ -97,16 +142,13 @@ namespace Monaverse.UI
 
             _modalInitialized = true;
 
-            WalletConnect.Instance.ActiveSessionChanged += (_, @struct) =>
-            {
-                if (string.IsNullOrEmpty(@struct.Topic))
-                    return;
+            //WalletConnect.Instance.ActiveSessionChanged += (_, @struct) =>
+            //{
+            //    if (string.IsNullOrEmpty(@struct.Topic))
+            //        return;
 
-                Debug.Log($"Session connected. Topic: {@struct.Topic}");
-                StatusWindow.Instance.Show("Wallet connected.");
-
-                AuthorizeWallet();
-            };
+            //    Debug.Log($"Session connected. Topic: {@struct.Topic}");
+            //};
 
             WalletConnect.Instance.SessionConnected += (_, @struct) =>
             {
@@ -116,6 +158,9 @@ namespace Monaverse.UI
                 Debug.Log($"Session connected. Topic: {@struct.Topic}");
                 StatusWindow.Instance.Show("Wallet connected.");
 
+                if(_walletDisconnectView != null)
+                    _walletDisconnectView.SetActive(true);
+
                 AuthorizeWallet();
             };
 
@@ -123,46 +168,129 @@ namespace Monaverse.UI
             {
                 Debug.Log("Wallet disconnected.");
                 StatusWindow.Instance.Show("Wallet disconnected.");
+
+                if (_walletDisconnectView != null)
+                    _walletDisconnectView.SetActive(false);
             };
         }
 
-        public void OnWalletConnectButton() => StartCoroutine(OpenWalletConnect());
+        public void OnWalletConnectButton() => OpenWalletConnect();
 
-        private IEnumerator OpenWalletConnect()
+        public void OnWalletDisonnectButton()
         {
             if (_walletConnected)
             {
                 _ = MonaverseManager.Instance.SDK.Disconnect();
+                MonaverseManager.Instance.SDK.ApiClient.ClearSession();
                 _walletConnected = false;
-                yield break;
             }
+        }
 
-            if (!WalletConnectModal.IsReady)
+        //private IEnumerator OpenWalletConnect()
+        //{
+        //    if (!WalletConnectModal.IsReady)
+        //    {
+        //        Instantiate(_walletConnectModalPrefab, Vector3.zero, Quaternion.identity);
+
+        //        var startTime = Time.time;
+
+        //        do
+        //        {
+        //            yield return new WaitForSeconds(0.5f);
+
+        //            if (Time.time - startTime > _initWCTimeout)
+        //            {
+        //                Debug.LogError("WalletConnect failed to instantiate.");
+        //                NotificationManager.Instance.ShowNotification("ERROR", "WalletConnect failed to instantiate.", NotificationManager.Severity.Error);
+        //                yield break;
+        //            }
+
+        //        } while ((!WalletConnectModal.IsReady));
+        //    }
+
+        //    var options = new WalletConnectModalOptions
+        //    {
+        //        ConnectOptions = BuildConnectOptions()
+        //    };
+
+        //    WalletConnectModal.Open(options);
+        //}
+
+        private async void OpenWalletConnect()
+        {
+            var monaConnectionOpts = new MonaWalletConnection()
             {
-                Instantiate(_walletConnectModalPrefab, Vector3.zero, Quaternion.identity);
-
-                var startTime = Time.time;
-
-                do
-                {
-                    yield return new WaitForSeconds(0.5f);
-
-                    if(Time.time - startTime > _initWCTimeout)
-                    {
-                        Debug.LogError("WalletConnect failed to instantiate.");
-                        NotificationManager.Instance.ShowNotification("ERROR", "WalletConnect failed to instantiate.", NotificationManager.Severity.Error);
-                        yield break;
-                    }
-
-                } while ((!WalletConnectModal.IsReady));
-            }
-
-            var options = new WalletConnectModalOptions
-            {
-                ConnectOptions = BuildConnectOptions()
+                ChainId = 1,
+                MonaWalletProvider = MonaWalletProvider.WalletConnect
             };
 
-            WalletConnectModal.Open(options);
+            var walletAddress = MonaverseManager.Instance.SDK.ConnectWallet(monaConnectionOpts);
+
+            var connectOpts = BuildConnectOptions(monaConnectionOpts.ChainId);
+
+            var connectedData = await WalletConnect.Instance.ConnectAsync(connectOpts);
+
+            var walletConnect = new GameObject("WalletConnect");
+            var canvas = walletConnect.AddComponent<Canvas>();
+            canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+
+            var QRCode = new GameObject("QRCode");
+            var QRRawImage = QRCode.AddComponent<RawImage>();
+
+            QRCode.transform.SetParent(walletConnect.transform);
+            var color32 = EncodeToQR(connectedData.Uri, 256, 256);
+            var texture2D = new Texture2D(256, 256);
+            texture2D.SetPixels32(color32);
+            texture2D.Apply();
+            QRRawImage.texture = texture2D;
+            QRRawImage.texture.filterMode = FilterMode.Point;
+
+            var wcRectTransform = walletConnect.GetComponent<RectTransform>();
+            wcRectTransform.anchoredPosition = UnityEngine.Vector2.zero;
+
+            var qrRectTransform = QRCode.GetComponent<RectTransform>();
+            qrRectTransform.anchoredPosition = UnityEngine.Vector2.zero;
+            qrRectTransform.SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, 256);
+            qrRectTransform.SetSizeWithCurrentAnchors(RectTransform.Axis.Vertical, 256);
+
+            UnityEngine.Object.Destroy(walletConnect);
+        }
+
+        private ConnectOptions BuildConnectOptions(BigInteger chainId)
+        {
+            var requiredNamespaces = new RequiredNamespaces
+            {
+                {
+                    "eip155", new ProposedNamespace
+                    {
+                        Methods = SupportedMethods,
+                        Chains = new[]
+                        {
+                            $"eip155:{chainId}"
+                        },
+                        Events = new[]
+                        {
+                            "chainChanged",
+                            "accountsChanged"
+                        }
+                    }
+                }
+            };
+
+            return new ConnectOptions
+            {
+                RequiredNamespaces = requiredNamespaces,
+            };
+        }
+
+        public virtual Color32[] EncodeToQR(string textForEncoding, int width, int height)
+        {
+            var writer = new BarcodeWriter
+            {
+                Format = BarcodeFormat.QR_CODE,
+                Options = new QrCodeEncodingOptions { Height = height, Width = width }
+            };
+            return writer.Write(textForEncoding);
         }
 
         private ConnectOptions BuildConnectOptions()
@@ -202,14 +330,19 @@ namespace Monaverse.UI
 
         public async void AuthorizeWallet()
         {
-            if (_walletAuthorized || _walletAuthorizing)
+            if (_walletAuthorized)
+            {
+                StatusWindow.Instance.Show("Authorized!");
+                return;
+            }
+
+            if (_walletAuthorizing)
                 return;
 
             _walletAuthorizing = true;
 
             try
             {
-
                 if (!await MonaverseManager.Instance.SDK.IsWalletConnected())
                 {
                     await MonaverseManager.Instance.SDK.ConnectWallet();
