@@ -19,6 +19,7 @@ namespace Monaverse.UI
     public class MonaverseModal : MonoBehaviour
     {
         [SerializeField] private Canvas _providerSelectionCanvas;
+        [SerializeField] private GameObject _walletQRView;
         [SerializeField] private GameObject _walletDisconnectView;
         [SerializeField] private GameObject _walletConnectModalPrefab;
         [SerializeField] private GameObject _monaManagerPrefab;
@@ -29,8 +30,6 @@ namespace Monaverse.UI
         private bool _modalInitialized;
 
         public static MonaverseModal Instance { get; private set; }
-
-        private float _initWCTimeout = 30.0f;
 
         private string[] SupportedMethods = new[] { "eth_sendTransaction", "personal_sign", "eth_signTypedData" };
 
@@ -132,6 +131,9 @@ namespace Monaverse.UI
                 StatusWindow.Instance.Show(message);
             }
 
+            if(!WalletConnectModal.IsReady)
+                Init(_walletConnected);
+
             WalletConnectModal.Ready += (_, args) => { Init(args.SessionResumed); };
         }
 
@@ -142,13 +144,13 @@ namespace Monaverse.UI
 
             _modalInitialized = true;
 
-            //WalletConnect.Instance.ActiveSessionChanged += (_, @struct) =>
-            //{
-            //    if (string.IsNullOrEmpty(@struct.Topic))
-            //        return;
+            WalletConnect.Instance.ActiveSessionChanged += (_, @struct) =>
+            {
+                if (string.IsNullOrEmpty(@struct.Topic))
+                    return;
 
-            //    Debug.Log($"Session connected. Topic: {@struct.Topic}");
-            //};
+                Debug.Log($"Session connected. Topic: {@struct.Topic}");
+            };
 
             WalletConnect.Instance.SessionConnected += (_, @struct) =>
             {
@@ -178,46 +180,24 @@ namespace Monaverse.UI
 
         public void OnWalletDisonnectButton()
         {
-            if (_walletConnected)
-            {
-                _ = MonaverseManager.Instance.SDK.Disconnect();
-                MonaverseManager.Instance.SDK.ApiClient.ClearSession();
-                _walletConnected = false;
-            }
+            _ = MonaverseManager.Instance.SDK.Disconnect();
+            MonaverseManager.Instance.SDK.ApiClient.ClearSession();
+            _walletConnected = false;
         }
 
-        //private IEnumerator OpenWalletConnect()
-        //{
-        //    if (!WalletConnectModal.IsReady)
-        //    {
-        //        Instantiate(_walletConnectModalPrefab, Vector3.zero, Quaternion.identity);
-
-        //        var startTime = Time.time;
-
-        //        do
-        //        {
-        //            yield return new WaitForSeconds(0.5f);
-
-        //            if (Time.time - startTime > _initWCTimeout)
-        //            {
-        //                Debug.LogError("WalletConnect failed to instantiate.");
-        //                NotificationManager.Instance.ShowNotification("ERROR", "WalletConnect failed to instantiate.", NotificationManager.Severity.Error);
-        //                yield break;
-        //            }
-
-        //        } while ((!WalletConnectModal.IsReady));
-        //    }
-
-        //    var options = new WalletConnectModalOptions
-        //    {
-        //        ConnectOptions = BuildConnectOptions()
-        //    };
-
-        //    WalletConnectModal.Open(options);
-        //}
+        public void OnWalletQRCancelButton()
+        {
+            if (_walletQRView != null)
+                _walletQRView.SetActive(false);
+        }
 
         private async void OpenWalletConnect()
         {
+            UnityEngine.Vector2Int qrSize = new(800,800);
+
+            if (_walletQRView != null)
+                _walletQRView.SetActive(true);
+
             var monaConnectionOpts = new MonaWalletConnection()
             {
                 ChainId = 1,
@@ -227,6 +207,9 @@ namespace Monaverse.UI
             var walletAddress = MonaverseManager.Instance.SDK.ConnectWallet(monaConnectionOpts);
 
             var connectOpts = BuildConnectOptions(monaConnectionOpts.ChainId);
+
+            if (WalletConnect.Instance.SignClient == null)
+                await WalletConnect.Instance.InitializeAsync();
 
             var connectedData = await WalletConnect.Instance.ConnectAsync(connectOpts);
 
@@ -238,8 +221,8 @@ namespace Monaverse.UI
             var QRRawImage = QRCode.AddComponent<RawImage>();
 
             QRCode.transform.SetParent(walletConnect.transform);
-            var color32 = EncodeToQR(connectedData.Uri, 256, 256);
-            var texture2D = new Texture2D(256, 256);
+            var color32 = EncodeToQR(connectedData.Uri, qrSize.x, qrSize.y);
+            var texture2D = new Texture2D(qrSize.x, qrSize.y);
             texture2D.SetPixels32(color32);
             texture2D.Apply();
             QRRawImage.texture = texture2D;
@@ -250,10 +233,16 @@ namespace Monaverse.UI
 
             var qrRectTransform = QRCode.GetComponent<RectTransform>();
             qrRectTransform.anchoredPosition = UnityEngine.Vector2.zero;
-            qrRectTransform.SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, 256);
-            qrRectTransform.SetSizeWithCurrentAnchors(RectTransform.Axis.Vertical, 256);
+            qrRectTransform.anchoredPosition = new UnityEngine.Vector2(0.0f, 120.0f);
+            qrRectTransform.SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, qrSize.x);
+            qrRectTransform.SetSizeWithCurrentAnchors(RectTransform.Axis.Vertical, qrSize.y);
+
+            await connectedData.Approval;
 
             UnityEngine.Object.Destroy(walletConnect);
+
+            if (_walletQRView != null)
+                _walletQRView.SetActive(false);
         }
 
         private ConnectOptions BuildConnectOptions(BigInteger chainId)
