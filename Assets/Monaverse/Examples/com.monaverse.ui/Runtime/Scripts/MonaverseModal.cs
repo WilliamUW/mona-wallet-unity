@@ -368,7 +368,7 @@ namespace Monaverse.UI
         {
             if (!MonaverseManager.Instance.SDK.IsWalletAuthorized())
             {
-                StatusWindow.Instance.Show("Authorized before requsting collectibles");
+                StatusWindow.Instance.Show("Authorize before requsting collectibles");
                 return;
             }
 

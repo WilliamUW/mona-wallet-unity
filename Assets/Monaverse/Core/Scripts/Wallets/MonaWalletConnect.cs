@@ -29,7 +29,7 @@ namespace Monaverse.Wallets
                 GameObject.Instantiate(MonaverseManager.Instance.WalletConnectPrefab);
                 await new WaitForSeconds(0.5f);
             }
-            
+
             await MonaWalletConnectUI.Instance.Connect(monaWalletConnection.ChainId);
             _namespace = WalletConnect.Instance.ActiveSession.Namespaces.First();
 
