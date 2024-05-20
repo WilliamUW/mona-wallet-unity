@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Numerics;
+using System.Threading.Tasks;
 using Monaverse.Api;
 using Monaverse.Core;
 using UnityEngine;
@@ -10,7 +11,6 @@ using UnityEngine.UI;
 using WalletConnectSharp.Sign.Models;
 using WalletConnectSharp.Sign.Models.Engine;
 using WalletConnectUnity.Core;
-using WalletConnectUnity.Modal;
 using ZXing;
 using ZXing.QrCode;
 
@@ -25,9 +25,7 @@ namespace Monaverse.UI
         [SerializeField] private GameObject _monaManagerPrefab;
 
         private bool _walletConnected;
-        private bool _walletAuthorized;
         private bool _walletAuthorizing;
-        private bool _modalInitialized;
 
         public static MonaverseModal Instance { get; private set; }
 
@@ -122,67 +120,26 @@ namespace Monaverse.UI
                 StatusWindow.Instance.Show(message);
             }
 
-            _walletAuthorized = MonaverseManager.Instance.SDK.IsWalletAuthorized();
-
-            if (_walletAuthorized)
+            if (MonaverseManager.Instance.SDK.IsWalletAuthorized())
             {
                 var message = "Wallet Already authorized.";
                 Debug.Log(message);
                 StatusWindow.Instance.Show(message);
             }
-
-            if(!WalletConnectModal.IsReady)
-                Init(_walletConnected);
-
-            WalletConnectModal.Ready += (_, args) => { Init(args.SessionResumed); };
-        }
-
-        private void Init(bool connected)
-        {
-            if (_modalInitialized)
-                return;
-
-            _modalInitialized = true;
-
-            WalletConnect.Instance.ActiveSessionChanged += (_, @struct) =>
-            {
-                if (string.IsNullOrEmpty(@struct.Topic))
-                    return;
-
-                Debug.Log($"Session connected. Topic: {@struct.Topic}");
-            };
-
-            WalletConnect.Instance.SessionConnected += (_, @struct) =>
-            {
-                if (string.IsNullOrEmpty(@struct.Topic))
-                    return;
-
-                Debug.Log($"Session connected. Topic: {@struct.Topic}");
-                StatusWindow.Instance.Show("Wallet connected.");
-
-                if(_walletDisconnectView != null)
-                    _walletDisconnectView.SetActive(true);
-
-                AuthorizeWallet();
-            };
-
-            WalletConnect.Instance.SessionDisconnected += (_, _) =>
-            {
-                Debug.Log("Wallet disconnected.");
-                StatusWindow.Instance.Show("Wallet disconnected.");
-
-                if (_walletDisconnectView != null)
-                    _walletDisconnectView.SetActive(false);
-            };
         }
 
         public void OnWalletConnectButton() => OpenWalletConnect();
 
-        public void OnWalletDisonnectButton()
+        public async void OnWalletDisonnectButton()
         {
-            _ = MonaverseManager.Instance.SDK.Disconnect();
+            await MonaverseManager.Instance.SDK.Disconnect();
             MonaverseManager.Instance.SDK.ApiClient.ClearSession();
             _walletConnected = false;
+
+            if (_walletDisconnectView != null)
+                _walletDisconnectView.SetActive(false);
+
+            StatusWindow.Instance.Show("Wallet Disconnected");
         }
 
         public void OnWalletQRCancelButton()
@@ -208,10 +165,14 @@ namespace Monaverse.UI
 
             var connectOpts = BuildConnectOptions(monaConnectionOpts.ChainId);
 
+            // REQUIRED TO GET QR URI
+
             if (WalletConnect.Instance.SignClient == null)
                 await WalletConnect.Instance.InitializeAsync();
 
             var connectedData = await WalletConnect.Instance.ConnectAsync(connectOpts);
+
+            // REQUIRED TO GET QR URI
 
             var walletConnect = new GameObject("WalletConnect");
             var canvas = walletConnect.AddComponent<Canvas>();
@@ -243,6 +204,13 @@ namespace Monaverse.UI
 
             if (_walletQRView != null)
                 _walletQRView.SetActive(false);
+
+            if (_walletDisconnectView != null)
+                _walletDisconnectView.SetActive(true);
+
+            await AuthorizeWallet();
+
+            RequestCollectibles();
         }
 
         private ConnectOptions BuildConnectOptions(BigInteger chainId)
@@ -317,16 +285,16 @@ namespace Monaverse.UI
             };
         }
 
-        public async void AuthorizeWallet()
+        public async Task<bool> AuthorizeWallet()
         {
-            if (_walletAuthorized)
+            if (MonaverseManager.Instance.SDK.IsWalletAuthorized())
             {
                 StatusWindow.Instance.Show("Authorized!");
-                return;
+                return await Task.FromResult(true);
             }
 
             if (_walletAuthorizing)
-                return;
+                return await Task.FromResult(true);
 
             _walletAuthorizing = true;
 
@@ -350,7 +318,7 @@ namespace Monaverse.UI
                         validateWalletAddressResponse.Message,
                         NotificationManager.Severity.Error);
                     _walletAuthorizing = false;
-                    return;
+                    return await Task.FromResult(false);
                 }
 
                 if (!validateWalletAddressResponse.Data.IsValid)
@@ -362,7 +330,7 @@ namespace Monaverse.UI
                             validateWalletAddressResponse.Data.ErrorMessage,
                             NotificationManager.Severity.Error);
                     _walletAuthorizing = false;
-                    return;
+                    return await Task.FromResult(false);
                 }
 
                 var signature = await MonaverseManager.Instance.SDK.ActiveWallet.SignMessage(validateWalletAddressResponse.Data.SiweMessage);
@@ -380,11 +348,32 @@ namespace Monaverse.UI
                         "Authorization Failed",
                         NotificationManager.Severity.Error);
                     _walletAuthorizing = false;
-                    return;
+                    return await Task.FromResult(false);
                 }
 
                 StatusWindow.Instance.Show("Authorization Successful!");
 
+                return await Task.FromResult(true);
+
+            } catch(Exception ex)
+            {
+                Debug.LogError(ex);
+                _walletAuthorizing = false;
+
+                return await Task.FromResult(true);
+            }
+        }
+
+        public async void RequestCollectibles()
+        {
+            if (!MonaverseManager.Instance.SDK.IsWalletAuthorized())
+            {
+                StatusWindow.Instance.Show("Authorized before requsting collectibles");
+                return;
+            }
+
+            try
+            {
                 var getCollectiblesResult = await MonaApi.ApiClient.Collectibles.GetWalletCollectibles();
                 Debug.Log("Collectibles: " + getCollectiblesResult);
                 if (!getCollectiblesResult.IsSuccess)
@@ -392,14 +381,13 @@ namespace Monaverse.UI
                     NotificationManager.Instance.ShowNotification("ERROR",
                         "GetCollectibles Failed: " + getCollectiblesResult.Message,
                         NotificationManager.Severity.Error);
-                    _walletAuthorizing = false;
                     return;
                 }
 
                 StatusWindow.Instance.Show("Pulled Collectibles. Total Count: " + getCollectiblesResult.Data.TotalCount);
-                _walletAuthorizing = false;
 
-            } catch(Exception ex)
+            }
+            catch (Exception ex)
             {
                 Debug.LogError(ex);
             }
