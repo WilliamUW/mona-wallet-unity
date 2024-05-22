@@ -4,6 +4,9 @@ using Monaverse.Core;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
+using System.Collections.Generic;
+using Monaverse.Api.Modules.Collectibles.Dtos;
+using Monaverse.Api.Modules.Collectibles.Responses;
 
 namespace Monaverse.Examples
 {
@@ -12,16 +15,16 @@ namespace Monaverse.Examples
         [Header("Labels")]
         [SerializeField] private TMP_Text _connectButtonLabel;
         [SerializeField] private TMP_Text _resultLabel;
-        
+
         [Header("Buttons")]
         [SerializeField] private Button _connectButton;
         [SerializeField] private Button _disconnectButton;
         [SerializeField] private Button _authorizeButton;
         [SerializeField] private Button _signOutButton;
         [SerializeField] private Button _postAuthorizeButton;
-        
+
         [Header("States")]
-        [Space] [SerializeField] private GameObject _dappButtons;
+        [Space][SerializeField] private GameObject _dappButtons;
         [SerializeField] private GameObject _connectedState;
         [SerializeField] private GameObject _authorizedState;
 
@@ -39,7 +42,7 @@ namespace Monaverse.Examples
         private void Start()
         {
             SetUIState(WalletState.Disconnected);
-            
+
             MonaverseManager.Instance.SDK.Connected += OnConnected;
             MonaverseManager.Instance.SDK.Disconnected += OnDisconnected;
             MonaverseManager.Instance.SDK.Authorized += OnAuthorized;
@@ -49,7 +52,7 @@ namespace Monaverse.Examples
         }
 
         #region SDK Event Handlers
-        
+
         private void OnSignMessageErrored(object sender, Exception exception)
         {
             Debug.LogError("[MonaWalletConnectTest] OnSignMessageErrored: " + exception.Message);
@@ -85,9 +88,9 @@ namespace Monaverse.Examples
             Debug.Log("[MonaWalletConnectTest.OnDisconnected]");
             SetUIState(WalletState.Disconnected);
         }
-        
+
         #endregion
-        
+
         #region UI Click Events
 
         /// <summary>
@@ -135,11 +138,11 @@ namespace Monaverse.Examples
         {
             try
             {
-                _authorizeButton.interactable = false; 
+                _authorizeButton.interactable = false;
                 Debug.Log("[MonaWalletConnectTest] OnAuthorizeWallet");
-                
+
                 _resultLabel.text = "Authorizing Wallet...";
-            
+
                 var authorizationResult = await MonaverseManager.Instance.SDK.AuthorizeWallet();
 
                 var resultText = authorizationResult switch
@@ -153,12 +156,12 @@ namespace Monaverse.Examples
                     MonaWalletSDK.AuthorizationResult.Error => "Unexpected error authorizing wallet",
                     _ => throw new ArgumentOutOfRangeException()
                 };
-            
+
                 _authorizeButton.interactable = true;
-            
+
                 Debug.Log("[MonaWalletConnectTest] Authorization Result: " + resultText);
-                
-                if(authorizationResult != MonaWalletSDK.AuthorizationResult.Authorized)
+
+                if (authorizationResult != MonaWalletSDK.AuthorizationResult.Authorized)
                     _resultLabel.text = resultText;
             }
             catch (Exception exception)
@@ -166,7 +169,7 @@ namespace Monaverse.Examples
                 Debug.LogError("[MonaWalletConnectTest] AuthorizeWallet Exception: " + exception.Message);
             }
         }
-        
+
         /// <summary>
         /// Handles the sign-out button click event to sign out from the Monaverse.
         /// </summary>
@@ -175,15 +178,15 @@ namespace Monaverse.Examples
             try
             {
                 Debug.Log("[MonaWalletConnectTest] OnSignOut");
-                
+
                 _resultLabel.text = "Signing out from the Monaverse...";
-            
-                _signOutButton.interactable = false; 
+
+                _signOutButton.interactable = false;
 
                 MonaverseManager.Instance.SDK.ApiClient.ClearSession();
-                
+
                 _signOutButton.interactable = true;
-            
+
                 SetUIState(WalletState.Connected);
             }
             catch (Exception exception)
@@ -216,6 +219,40 @@ namespace Monaverse.Examples
             }
 
             _resultLabel.text = "Success: wallet collectible count: " + getCollectiblesResult.Data.TotalCount;
+
+            // get vrm asset urls
+            List<string> vrmAssetUrls = new List<string>();
+            Debug.Log(getCollectiblesResult.Data);
+            Debug.Log(getCollectiblesResult.Data.Data);
+            Debug.Log(getCollectiblesResult.Data.Data[0]);
+            // var collectibles = getCollectiblesResult.Data;
+
+            // for (int i = 0; i < collectibles.TotalCount; i++)
+            // {
+            //     var collectible = collectibles[i];
+            //     if (collectible.versions != null && collectible.versions.Count > 0)
+            //     {
+            //         for (int j = 0; j < collectible.versions.TotalCount; j++)
+            //         {
+            //             var version = collectible.versions[j];
+            //             if (version.asset.EndsWith(".vrm"))
+            //             {
+            //                 vrmAssetUrls.Add(version.asset);
+            //             }
+            //         }
+            //     }
+            // }
+
+            if (vrmAssetUrls.Count > 0)
+            {
+                _resultLabel.text += "\nVRM Assets:\n" + string.Join("\n", vrmAssetUrls);
+            }
+            else
+            {
+                _resultLabel.text += "\nNo VRM assets found.";
+            }
+
+            Debug.Log("[MonaWalletConnectTest] VRM Asset URLs: " + string.Join(", ", vrmAssetUrls));
         }
 
         #endregion
@@ -229,7 +266,7 @@ namespace Monaverse.Examples
             _dappButtons.SetActive(false);
             _connectedState.SetActive(false);
             _authorizedState.SetActive(false);
-            
+
             switch (state)
             {
                 case WalletState.Disconnected:
