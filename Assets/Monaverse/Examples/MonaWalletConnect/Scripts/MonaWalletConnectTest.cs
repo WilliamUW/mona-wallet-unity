@@ -221,27 +221,19 @@ namespace Monaverse.Examples
             _resultLabel.text = "Success: wallet collectible count: " + getCollectiblesResult.Data.TotalCount;
 
             // get vrm asset urls
-            List<string> vrmAssetUrls = new List<string>();
             Debug.Log(getCollectiblesResult.Data);
             Debug.Log(getCollectiblesResult.Data.Data);
             Debug.Log(getCollectiblesResult.Data.Data[0]);
-            // var collectibles = getCollectiblesResult.Data;
-
-            // for (int i = 0; i < collectibles.TotalCount; i++)
-            // {
-            //     var collectible = collectibles[i];
-            //     if (collectible.versions != null && collectible.versions.Count > 0)
-            //     {
-            //         for (int j = 0; j < collectible.versions.TotalCount; j++)
-            //         {
-            //             var version = collectible.versions[j];
-            //             if (version.asset.EndsWith(".vrm"))
-            //             {
-            //                 vrmAssetUrls.Add(version.asset);
-            //             }
-            //         }
-            //     }
-            // }
+            List<string> vrmAssetUrls = new List<string>();
+            foreach (var collectible in getCollectiblesResult.Data.Data)
+            {
+                Debug.Log(collectible.Versions);
+                Debug.Log(collectible.Versions[collectible.ActiveVersion]);
+                Debug.Log(collectible.Versions[collectible.ActiveVersion].Asset);
+                vrmAssetUrls.Add(collectible.Versions[collectible.ActiveVersion].Asset);
+                // const url = collectible.Versions[collectible.ActiveVersion].Asset;
+                // vrmAssetUrls.Add(url);
+            }
 
             if (vrmAssetUrls.Count > 0)
             {
