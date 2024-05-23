@@ -246,17 +246,21 @@ namespace Monaverse.Examples
 
             Debug.Log("[MonaWalletConnectTest] VRM Asset URLs: " + string.Join(", ", vrmAssetUrls));
 
-            // foreach (var url in vrmAssetUrls)
-            // {
-            //     // load vrm asset
-            //     var loader = GetComponent<GlbLoader>();
+            foreach (var url in vrmAssetUrls)
+            {
+                // load vrm asset
+                var loader = GetComponent<GlbLoader>();
                 
-            //     loader.Load(url, true, (GameObject obj) =>
-            //     {
-            //         obj.transform.position = Vector3.zero;
-            //         obj.transform.rotation = Quaternion.Euler(0, 100f, 0);
-            //     });
-            // }
+                loader.Load(url, true, (GameObject obj) =>
+                {
+                    obj.transform.position = Vector3.zero;
+                    obj.transform.rotation = Quaternion.Euler(0, 100f, 0);
+
+                    // add mesh collider dynamically after loading
+
+                    // obj.AddComponent<MeshCollider>();
+                });
+            }
         }
 
         #endregion
